@@ -1,7 +1,11 @@
+"use client"; // <--- ADD THIS LINE FIRST
+import { db } from "@/lib/db"; // ⚠️ NOTE: See Warning below
+import { archiveDocument, deleteDocument } from "./actions/process-document";
+// ... rest of your imports
 import { db } from "@/lib/db";
-import { archiveDocument } from "./actions/process-document";
+import { archiveDocument, deleteDocument } from "./actions/process-document";
 import { DocumentCard } from "@/components/document-card";
-import { Upload, LayoutGrid, FolderOpen, Search } from "lucide-react";
+import { LayoutGrid, FolderOpen, Search, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { UploadDropzone } from "@uploadthing/react";
 import { OurFileRouter } from "./api/uploadthing/core";
@@ -44,7 +48,6 @@ export default async function Page({
         </nav>
       </aside>
 
-      {/* MAIN CONTENT */}
       <main className="flex-1 p-4 md:p-10 max-w-6xl mx-auto w-full">
         <header className="mb-10">
           <h1 className="text-3xl font-black text-slate-900 tracking-tight">Personal Archive</h1>
@@ -62,7 +65,7 @@ export default async function Page({
           </div>
         </header>
 
-        {/* UPLOAD ZONE - Fixed Type Argument */}
+        {/* UPLOAD ZONE */}
         <section className="bg-white rounded-[2rem] p-8 shadow-sm border border-slate-100 mb-12">
           <UploadDropzone<OurFileRouter, "docUploader">
             endpoint="docUploader"
@@ -81,7 +84,23 @@ export default async function Page({
         {/* DOCUMENTS GRID */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {docs.length > 0 ? (
-            docs.map((doc) => <DocumentCard key={doc.id} doc={doc} />)
+            docs.map((doc) => (
+              <div key={doc.id} className="relative group">
+                <DocumentCard doc={doc} />
+                {/* Delete button overlay */}
+                <form 
+                  action={async () => {
+                    "use server";
+                    await deleteDocument(doc.id);
+                  }}
+                  className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <button className="p-2 bg-red-50 text-red-500 rounded-lg hover:bg-red-500 hover:text-white transition-all">
+                    <Trash2 size={14} />
+                  </button>
+                </form>
+              </div>
+            ))
           ) : (
             <div className="col-span-full py-20 text-center border-2 border-dashed border-slate-100 rounded-3xl text-slate-400 italic">No documents found.</div>
           )}
