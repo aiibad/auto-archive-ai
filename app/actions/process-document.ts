@@ -3,9 +3,8 @@
 import { db } from "@/lib/db";
 import { openai } from "@/lib/ai";
 import { revalidatePath } from "next/cache";
-
-// FIX: Standard import for pdf-parse that works in Next.js Server Actions
-import pdf from "pdf-parse/lib/pdf-parse";
+// Standard import now works because of the serverExternalPackages config
+import pdf from "pdf-parse";
 
 export async function archiveDocument(fileUrl: string, base64Data?: string) {
   try {
@@ -16,7 +15,7 @@ export async function archiveDocument(fileUrl: string, base64Data?: string) {
       const response = await fetch(fileUrl);
       const buffer = await response.arrayBuffer();
       
-      // This extracts the real text so the AI doesn't hallucinate IDs
+      // Extraction will now work because the library is handled as an external package
       const data = await pdf(Buffer.from(buffer));
       contentToAnalyze = data.text.trim().substring(0, 3000); 
     }
@@ -26,16 +25,14 @@ export async function archiveDocument(fileUrl: string, base64Data?: string) {
         role: "system", 
         content: `You are a professional document analyzer. 
         Categorize into: Receipt, ID, or Work.
-        - ID: Gov-issued cards, passports.
-        - Receipt: Bills, invoices.
-        - Work: Everything else, including practice papers, reports, or Q&A.
+        - Work: includes school practice papers, reports, or Q&A.
         
-        Provide a 2-3 sentence summary based ONLY on the actual text provided. 
+        Summary must be based ONLY on the actual text provided. 
         Respond ONLY in JSON format: { "category": "...", "summary": "..." }` 
       }
     ];
 
-    // 2. SEND CONTENT TO AI
+    // 2. DATA HAND-OFF TO AI
     if (base64Data && !fileUrl.toLowerCase().endsWith(".pdf")) {
       messages.push({
         role: "user",
@@ -49,7 +46,7 @@ export async function archiveDocument(fileUrl: string, base64Data?: string) {
         role: "user", 
         content: contentToAnalyze 
           ? `Analyze this content: ${contentToAnalyze}` 
-          : `Analyze this document: ${fileUrl}` 
+          : `Analyze this document URL: ${fileUrl}` 
       });
     }
 
@@ -83,9 +80,6 @@ export async function archiveDocument(fileUrl: string, base64Data?: string) {
   }
 }
 
-/**
- * DELETE: Required for your DocumentCard component
- */
 export async function deleteDocument(id: string) {
   try {
     await db.document.delete({ where: { id } });
