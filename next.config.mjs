@@ -1,6 +1,7 @@
-/** @type {import('next').NextConfig} */
-const nextConfig = {
-  // This is the magic fix for the "Module not found" error
+// next.config.ts
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
   serverExternalPackages: ["pdf-parse"],
 };
 
