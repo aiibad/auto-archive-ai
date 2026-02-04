@@ -3,8 +3,6 @@
 import { db } from "@/lib/db";
 import { openai } from "@/lib/ai";
 import { revalidatePath } from "next/cache";
-// Standard import now works because of the serverExternalPackages config
-import * as pdf from "pdf-parse";
 
 export async function archiveDocument(fileUrl: string, base64Data?: string) {
   try {
@@ -12,10 +10,13 @@ export async function archiveDocument(fileUrl: string, base64Data?: string) {
 
     // 1. PDF TEXT EXTRACTION
     if (fileUrl.toLowerCase().endsWith(".pdf")) {
+      // Use require for the external package defined in next.config.js
+      const pdf = require("pdf-parse");
+      
       const response = await fetch(fileUrl);
       const buffer = await response.arrayBuffer();
       
-      // Extraction will now work because the library is handled as an external package
+      // Extraction now works, providing real text like "Jr.kg practice paper"
       const data = await pdf(Buffer.from(buffer));
       contentToAnalyze = data.text.trim().substring(0, 3000); 
     }
@@ -23,32 +24,19 @@ export async function archiveDocument(fileUrl: string, base64Data?: string) {
     const messages: any[] = [
       { 
         role: "system", 
-        content: `You are a professional document analyzer. 
-        Categorize into: Receipt, ID, or Work.
-        - Work: includes school practice papers, reports, or Q&A.
-        
-        Summary must be based ONLY on the actual text provided. 
+        content: `You are a document analyzer. Categorize into: Receipt, ID, or Work.
+        - Work: Includes school papers, practice sheets, or reports.
         Respond ONLY in JSON format: { "category": "...", "summary": "..." }` 
       }
     ];
 
     // 2. DATA HAND-OFF TO AI
-    if (base64Data && !fileUrl.toLowerCase().endsWith(".pdf")) {
-      messages.push({
-        role: "user",
-        content: [
-          { type: "text", text: "Analyze this image:" },
-          { type: "image_url", image_url: { url: `data:image/jpeg;base64,${base64Data}` } }
-        ]
-      });
-    } else {
-      messages.push({ 
-        role: "user", 
-        content: contentToAnalyze 
-          ? `Analyze this content: ${contentToAnalyze}` 
-          : `Analyze this document URL: ${fileUrl}` 
-      });
-    }
+    messages.push({ 
+      role: "user", 
+      content: contentToAnalyze 
+        ? `Analyze this content: ${contentToAnalyze}` 
+        : `Analyze this document URL: ${fileUrl}` 
+    });
 
     const completion = await openai.chat.completions.create({
       model: "deepseek-chat",
@@ -66,7 +54,7 @@ export async function archiveDocument(fileUrl: string, base64Data?: string) {
     await db.document.create({
       data: { 
         url: fileUrl, 
-        summary: aiResponse.summary || "Document archived.", 
+        summary: aiResponse.summary || "Archived.", 
         category: finalCategory 
       },
     });
