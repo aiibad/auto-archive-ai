@@ -1,4 +1,5 @@
 "use client";
+
 import { 
   ExternalLink, 
   Trash2, 
@@ -6,7 +7,9 @@ import {
   IdCard, 
   Briefcase, 
   AlertCircle,
-  FileText 
+  FileText,
+  ChevronDown,
+  ChevronUp
 } from "lucide-react";
 import { deleteDocument } from "@/app/actions/process-document";
 import { useState } from "react";
@@ -47,6 +50,11 @@ const categoryStyles: Record<string, { bg: string; text: string; icon: any; acce
 
 export function DocumentCard({ doc }: { doc: any }) {
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false); //
+
+  // Define character limit for truncation
+  const CHARACTER_LIMIT = 150;
+  const isLongText = doc.summary.length > CHARACTER_LIMIT;
   
   // Determine style based on category
   const style = categoryStyles[doc.category] || categoryStyles.General;
@@ -56,7 +64,7 @@ export function DocumentCard({ doc }: { doc: any }) {
     if (!confirm("Are you sure you want to delete this document?")) return;
     setIsDeleting(true);
     try {
-      await deleteDocument(doc.id); //
+      await deleteDocument(doc.id); 
     } catch (error) {
       console.error("Delete failed:", error);
       setIsDeleting(false);
@@ -82,18 +90,36 @@ export function DocumentCard({ doc }: { doc: any }) {
         </button>
       </div>
 
-      {/* BODY: Icon + Summary */}
+      {/* BODY: Icon + Summary with Read More Toggle */}
       <div className="flex gap-4 mb-6">
-        {/* Large Visual Category Icon */}
         <div className={`shrink-0 w-12 h-12 rounded-2xl ${style.bg} ${style.text} flex items-center justify-center`}>
           <CategoryIcon size={24} />
         </div>
         
         <div className="flex-1">
           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">AI Analysis</p>
-          <h3 className="text-slate-900 font-bold text-sm leading-tight line-clamp-2">
-            {doc.summary}
-          </h3>
+          <div className="text-slate-900 font-bold text-sm leading-relaxed">
+            {/* Logic for Truncation */}
+            {isExpanded || !isLongText ? (
+              doc.summary
+            ) : (
+              `${doc.summary.substring(0, CHARACTER_LIMIT)}...`
+            )}
+
+            {/* Toggle Button */}
+            {isLongText && (
+              <button 
+                onClick={() => setIsExpanded(!isExpanded)}
+                className="ml-1 text-blue-600 hover:text-blue-800 transition-colors inline-flex items-center gap-0.5"
+              >
+                {isExpanded ? (
+                  <>Show Less <ChevronUp size={14} /></>
+                ) : (
+                  <>Read More <ChevronDown size={14} /></>
+                )}
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
